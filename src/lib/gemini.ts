@@ -13,7 +13,7 @@ export interface GeminiResponse {
 
 export class GeminiAPI {
   private apiKey: string;
-  private baseUrl = "/api/gemini";
+  private baseUrl = "https://generativelanguage.googleapis.com/v1beta";
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
