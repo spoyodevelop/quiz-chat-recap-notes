@@ -13,7 +13,6 @@ import {
 import LearningChat from "@/components/LearningChat";
 import TILBoard from "@/components/TILBoard";
 import ApiKeySetup from "@/components/ApiKeySetup";
-import { getStoredApiKey } from "@/lib/gemini";
 
 type LearningSession = {
   id: string;
@@ -40,16 +39,6 @@ const Index = () => {
     []
   );
   const [apiKey, setApiKey] = useState<string>("");
-
-  useEffect(() => {
-    const storedApiKey = getStoredApiKey();
-    if (storedApiKey) {
-      setApiKey(storedApiKey);
-      setLearningPhase("input");
-    } else {
-      setLearningPhase("setup");
-    }
-  }, []);
 
   const handleApiKeySet = (newApiKey: string) => {
     setApiKey(newApiKey);
@@ -187,6 +176,7 @@ const Index = () => {
             session={currentSession}
             onSessionComplete={completeSession}
             onBack={() => setLearningPhase("input")}
+            apiKey={apiKey}
           />
         )}
 

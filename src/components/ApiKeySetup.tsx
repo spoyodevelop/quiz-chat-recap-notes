@@ -57,7 +57,6 @@ const ApiKeySetup: React.FC<ApiKeySetupProps> = ({
     const isValid = await validateApiKey(apiKey.trim());
 
     if (isValid) {
-      localStorage.setItem("gemini_api_key", apiKey.trim());
       setValidationStatus("success");
       onApiKeySet(apiKey.trim());
     } else {
@@ -68,7 +67,6 @@ const ApiKeySetup: React.FC<ApiKeySetupProps> = ({
   };
 
   const handleRemoveApiKey = () => {
-    localStorage.removeItem("gemini_api_key");
     setApiKey("");
     setValidationStatus("idle");
     onApiKeySet("");
@@ -87,7 +85,7 @@ const ApiKeySetup: React.FC<ApiKeySetupProps> = ({
           <div className="relative">
             <Input
               type={showApiKey ? "text" : "password"}
-              placeholder="AIza..."
+              placeholder="gemini-api-key"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               className="pr-10"
@@ -168,7 +166,8 @@ const ApiKeySetup: React.FC<ApiKeySetupProps> = ({
             <li>생성된 키를 복사하여 위에 입력</li>
           </ol>
           <p className="text-xs text-gray-500">
-            ⚠️ API 키는 브라우저에만 저장되며, 외부로 전송되지 않습니다.
+            ⚠️ API 키는 어디에도 저장되지 않으며, 새로고침시 다시 키를
+            입력해야합니다.
           </p>
         </div>
       </CardContent>

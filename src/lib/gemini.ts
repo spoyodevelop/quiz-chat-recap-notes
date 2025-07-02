@@ -203,12 +203,7 @@ ${conversationText}
   }
 }
 
-export const getStoredApiKey = (): string | null => {
-  return localStorage.getItem("gemini_api_key");
-};
-
-export const createGeminiAPI = (apiKey?: string): GeminiAPI | null => {
-  const key = apiKey || getStoredApiKey();
-  if (!key) return null;
-  return new GeminiAPI(key);
+export const createGeminiAPI = (apiKey: string): GeminiAPI | null => {
+  if (!apiKey) return null;
+  return new GeminiAPI(apiKey);
 };

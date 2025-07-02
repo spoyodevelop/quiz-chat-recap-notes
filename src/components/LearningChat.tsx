@@ -32,12 +32,14 @@ interface LearningChatProps {
   session: LearningSession;
   onSessionComplete: (session: LearningSession, summary: string) => void;
   onBack: () => void;
+  apiKey: string;
 }
 
 const LearningChat: React.FC<LearningChatProps> = ({
   session,
   onSessionComplete,
   onBack,
+  apiKey,
 }) => {
   const [messages, setMessages] = useState(session.messages);
   const [currentMessage, setCurrentMessage] = useState("");
@@ -49,13 +51,13 @@ const LearningChat: React.FC<LearningChatProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const api = createGeminiAPI();
+    const api = createGeminiAPI(apiKey);
     setGeminiAPI(api);
 
     if (!api) {
       console.error("Gemini API not available - API key missing");
     }
-  }, []);
+  }, [apiKey]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
