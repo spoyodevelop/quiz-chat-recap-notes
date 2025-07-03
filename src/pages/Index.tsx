@@ -10,23 +10,10 @@ import {
   Sparkles,
   Settings,
 } from "lucide-react";
-import LearningChat from "@/components/LearningChat";
+import LearningChat, { LearningSession } from "@/components/LearningChat";
 import TILBoard from "@/components/TILBoard";
 import TILDetail from "@/components/TILDetail";
 import ApiKeySetup from "@/components/ApiKeySetup";
-
-type LearningSession = {
-  id: string;
-  topic: string;
-  startTime: Date;
-  messages: Array<{
-    role: "user" | "assistant";
-    content: string;
-    timestamp: Date;
-  }>;
-  isCompleted: boolean;
-  summary?: string;
-};
 
 const Index = () => {
   const [currentTopic, setCurrentTopic] = useState("");

@@ -79,7 +79,7 @@ const TILDetail: React.FC<TILDetailProps> = ({ session, onBack }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* TIL 요약 */}
-        <Card className="h-fit">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-blue-600" />
@@ -87,9 +87,11 @@ const TILDetail: React.FC<TILDetailProps> = ({ session, onBack }) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="prose prose-sm max-w-none">
-              <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                {session.summary || "요약이 없습니다."}
+            <div className="max-h-[500px] overflow-y-auto">
+              <div className="prose prose-sm max-w-none">
+                <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+                  {session.summary || "요약이 없습니다."}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -107,7 +109,7 @@ const TILDetail: React.FC<TILDetailProps> = ({ session, onBack }) => {
             </p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4 max-h-96 overflow-y-auto">
+            <div className="space-y-4 max-h-[500px] overflow-y-auto">
               {session.messages.map((message, index) => (
                 <div key={index} className="flex gap-3">
                   <div className="flex-shrink-0">

@@ -7,26 +7,44 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
   Send,
-  Bot,
-  User,
   CheckCircle,
   Clock,
   Loader2,
+  Lightbulb,
+  Target,
+  MessageCircle,
+  ChevronRight,
 } from "lucide-react";
-import { createGeminiAPI, GeminiAPI } from "@/lib/gemini";
+import {
+  createGeminiAPI,
+  GeminiAPI,
+  StructuredQuizResponse,
+} from "@/lib/gemini";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 
-type LearningSession = {
+// 기존 메시지 타입 정의
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+}
+
+// 학습 세션 타입 정의
+export interface LearningSession {
   id: string;
   topic: string;
   startTime: Date;
-  messages: Array<{
-    role: "user" | "assistant";
-    content: string;
-    timestamp: Date;
-  }>;
+  messages: ChatMessage[];
   isCompleted: boolean;
   summary?: string;
-};
+}
+
+// 구조화된 메시지 타입 (기존 메시지 타입 확장)
+interface StructuredMessage extends ChatMessage {
+  structuredData?: StructuredQuizResponse;
+}
 
 interface LearningChatProps {
   session: LearningSession;
@@ -41,14 +59,20 @@ const LearningChat: React.FC<LearningChatProps> = ({
   onBack,
   apiKey,
 }) => {
-  const [messages, setMessages] = useState(session.messages);
+  const [messages, setMessages] = useState<StructuredMessage[]>(
+    session.messages.map((msg) => ({ ...msg, structuredData: undefined }))
+  );
   const [currentMessage, setCurrentMessage] = useState("");
   const [isRecapping, setIsRecapping] = useState(false);
   const [recap, setRecap] = useState("");
   const [quizCount, setQuizCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isQuizMode, setIsQuizMode] = useState(false);
+  const [waitingForNext, setWaitingForNext] = useState(false);
   const [geminiAPI, setGeminiAPI] = useState<GeminiAPI | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const MAX_QUIZ_COUNT = 3;
 
   useEffect(() => {
     const api = createGeminiAPI(apiKey);
@@ -78,7 +102,7 @@ const LearningChat: React.FC<LearningChatProps> = ({
       const welcomeContent = await geminiAPI.generateWelcomeMessage(
         session.topic
       );
-      const welcomeMessage = {
+      const welcomeMessage: StructuredMessage = {
         role: "assistant" as const,
         content: welcomeContent,
         timestamp: new Date(),
@@ -87,7 +111,7 @@ const LearningChat: React.FC<LearningChatProps> = ({
     } catch (error) {
       console.error("Welcome message generation failed:", error);
       // 폴백 메시지
-      const fallbackMessage = {
+      const fallbackMessage: StructuredMessage = {
         role: "assistant" as const,
         content: `안녕하세요! "${session.topic}"에 대해 함께 학습해보겠습니다. 
 
@@ -105,7 +129,10 @@ const LearningChat: React.FC<LearningChatProps> = ({
   const sendMessage = async () => {
     if (!currentMessage.trim() || !geminiAPI || isLoading) return;
 
-    const userMessage = {
+    // 사용자가 답변을 입력하면 대기 상태 해제
+    setWaitingForNext(false);
+
+    const userMessage: StructuredMessage = {
       role: "user" as const,
       content: currentMessage,
       timestamp: new Date(),
@@ -118,18 +145,52 @@ const LearningChat: React.FC<LearningChatProps> = ({
     setIsLoading(true);
 
     try {
-      const aiResponse = await geminiAPI.generateQuizResponse(
-        session.topic,
-        currentInput,
-        quizCount,
-        newMessages
-      );
+      let aiMessage: StructuredMessage;
 
-      const aiMessage = {
-        role: "assistant" as const,
-        content: aiResponse,
-        timestamp: new Date(),
-      };
+      const shouldUseStructured = quizCount > 0 || newMessages.length > 1;
+
+      if (shouldUseStructured) {
+        setIsQuizMode(true);
+        // 구조화된 응답 사용
+        const structuredResponse =
+          await geminiAPI.generateStructuredQuizResponse(
+            session.topic,
+            currentInput,
+            quizCount,
+            newMessages.map((msg) => ({
+              role: msg.role,
+              content: msg.content,
+            }))
+          );
+
+        const formattedContent = formatStructuredResponse(structuredResponse);
+
+        aiMessage = {
+          role: "assistant" as const,
+          content: formattedContent,
+          timestamp: new Date(),
+          structuredData: structuredResponse,
+        };
+
+        setWaitingForNext(true);
+      } else {
+        // 첫 인사말은 기존 방식 사용
+        const aiResponse = await geminiAPI.generateQuizResponse(
+          session.topic,
+          currentInput,
+          quizCount,
+          newMessages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          }))
+        );
+
+        aiMessage = {
+          role: "assistant" as const,
+          content: aiResponse,
+          timestamp: new Date(),
+        };
+      }
 
       setMessages((prev) => [...prev, aiMessage]);
       setQuizCount((prev) => prev + 1);
@@ -164,12 +225,54 @@ const LearningChat: React.FC<LearningChatProps> = ({
         errorText += `\n\n상세 오류: ${error.message}`;
       }
 
-      const errorMessage = {
+      const errorMessage: StructuredMessage = {
         role: "assistant" as const,
         content: errorText,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const nextQuestion = async () => {
+    if (!geminiAPI || isLoading || quizCount >= MAX_QUIZ_COUNT) return;
+
+    setWaitingForNext(false);
+    setIsLoading(true);
+
+    try {
+      const structuredResponse = await geminiAPI.generateStructuredQuizResponse(
+        session.topic,
+        "다음 질문을 주세요",
+        quizCount,
+        messages.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        }))
+      );
+
+      const formattedContent = formatStructuredResponse(structuredResponse);
+
+      const aiMessage: StructuredMessage = {
+        role: "assistant" as const,
+        content: formattedContent,
+        timestamp: new Date(),
+        structuredData: structuredResponse,
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
+      setQuizCount((prev) => prev + 1);
+
+      if (quizCount + 1 >= MAX_QUIZ_COUNT) {
+        setWaitingForNext(false);
+      } else {
+        setWaitingForNext(true);
+      }
+    } catch (error) {
+      console.error("Next question generation failed:", error);
+      setWaitingForNext(true);
     } finally {
       setIsLoading(false);
     }
@@ -184,7 +287,11 @@ const LearningChat: React.FC<LearningChatProps> = ({
     try {
       const summary = await geminiAPI.generateRecapSummary(
         session.topic,
-        messages
+        // API 호출을 위해 기본 메시지 형태로 변환
+        messages.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        }))
       );
       setRecap(summary);
     } catch (error) {
@@ -209,9 +316,14 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
   const completeSession = () => {
     if (!recap.trim()) return;
 
-    const updatedSession = {
+    const updatedSession: LearningSession = {
       ...session,
-      messages: messages,
+      // StructuredMessage를 기본 ChatMessage로 변환
+      messages: messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp,
+      })),
       summary: recap,
     };
 
@@ -223,6 +335,142 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  // 구조화된 응답을 사용자 친화적 형태로 변환
+  const formatStructuredResponse = (
+    structured: StructuredQuizResponse
+  ): string => {
+    let content = "";
+
+    if (structured.feedback) {
+      content += `📝 **피드백**\n${structured.feedback}\n\n`;
+    }
+
+    content += `💡 **핵심 질문**\n${structured.mainQuestion}\n\n`;
+
+    if (structured.highlights && structured.highlights.length > 0) {
+      content += `🎯 **주목해야 할 핵심 포인트**\n`;
+      structured.highlights.forEach((highlight) => {
+        content += `• ${highlight}\n`;
+      });
+      content += "\n";
+    }
+
+    if (structured.options && structured.options.length > 0) {
+      content += `**선택지**\n`;
+      structured.options.forEach((option) => {
+        content += `${option}\n`;
+      });
+      content += "\n";
+    }
+
+    if (structured.hint) {
+      content += `💭 **힌트**: ${structured.hint}`;
+    }
+
+    return content;
+  };
+
+  // 구조화된 메시지 렌더링 컴포넌트
+  const StructuredMessageCard: React.FC<{ message: StructuredMessage }> = ({
+    message,
+  }) => {
+    if (!message.structuredData) {
+      return (
+        <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+          {message.content}
+        </div>
+      );
+    }
+
+    const data = message.structuredData;
+
+    return (
+      <div className="space-y-6">
+        {data.feedback && (
+          <>
+            <Alert className="border-blue-200 bg-blue-50">
+              <MessageCircle className="h-4 w-4" />
+              <AlertDescription className="text-blue-800">
+                <strong>피드백:</strong> {data.feedback}
+              </AlertDescription>
+            </Alert>
+            <Separator className="my-6" />
+          </>
+        )}
+
+        <Card className="border-2 border-green-200 bg-green-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-green-800">
+              <Lightbulb className="w-5 h-5" />
+              핵심 질문
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg font-medium text-green-900 leading-relaxed">
+              {data.mainQuestion}
+            </p>
+            <Badge variant="secondary" className="mt-2">
+              {data.questionType}
+            </Badge>
+          </CardContent>
+        </Card>
+
+        {data.highlights && data.highlights.length > 0 && (
+          <Card className="border-yellow-200 bg-yellow-50">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-yellow-800">
+                <Target className="w-5 h-5" />
+                주목해야 할 핵심 포인트
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                {data.highlights.map((highlight, index) => (
+                  <li
+                    key={index}
+                    className="flex items-start gap-2 text-yellow-900"
+                  >
+                    <span className="text-yellow-600 mt-1">•</span>
+                    <span>{highlight}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
+        {data.options && data.options.length > 0 && (
+          <Card className="border-purple-200 bg-purple-50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-purple-800">선택지</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {data.options.map((option, index) => (
+                  <div
+                    key={index}
+                    className="p-3 bg-white rounded-lg border border-purple-200"
+                  >
+                    <span className="text-purple-900">{option}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {data.hint && (
+          <Alert className="border-indigo-200 bg-indigo-50">
+            <Lightbulb className="h-4 w-4" />
+            <AlertDescription className="text-indigo-800">
+              <strong>힌트:</strong> {data.hint}
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -250,76 +498,130 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
         </Badge>
       </div>
 
+      {isQuizMode && (
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>학습 진행도</span>
+                <span>
+                  {quizCount}/{MAX_QUIZ_COUNT}
+                </span>
+              </div>
+              <Progress
+                value={(quizCount / MAX_QUIZ_COUNT) * 100}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500 text-center">
+                {quizCount >= MAX_QUIZ_COUNT
+                  ? "모든 퀴즈 완료! TIL 작성 준비됨"
+                  : `${MAX_QUIZ_COUNT - quizCount}개 질문 남음`}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {!isRecapping ? (
-        <div className="space-y-4">
-          <Card className="h-96 flex flex-col">
-            <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex gap-3 ${
-                    message.role === "user" ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  {message.role === "assistant" && (
-                    <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-                      <Bot className="w-4 h-4 text-white" />
+        <div className="space-y-6">
+          <Card className="h-96 overflow-y-auto">
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                {messages.map((message, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          message.role === "user" ? "default" : "secondary"
+                        }
+                        className={
+                          message.role === "user"
+                            ? "bg-blue-600"
+                            : "bg-green-100 text-green-700"
+                        }
+                      >
+                        {message.role === "user" ? "나" : "AI"}
+                      </Badge>
+                      <span className="text-xs text-gray-500">
+                        {formatTime(message.timestamp)}
+                      </span>
                     </div>
-                  )}
-                  <div
-                    className={`max-w-sm md:max-w-md px-4 py-3 rounded-lg whitespace-pre-wrap ${
-                      message.role === "user"
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {message.content}
+                    {message.role === "assistant" && message.structuredData ? (
+                      <StructuredMessageCard message={message} />
+                    ) : (
+                      <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+                        {message.content}
+                      </div>
+                    )}
+                    {index < messages.length - 1 && (
+                      <Separator className="my-4" />
+                    )}
                   </div>
-                  {message.role === "user" && (
-                    <div className="w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center flex-shrink-0">
-                      <User className="w-4 h-4 text-white" />
-                    </div>
-                  )}
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
+                ))}
+                {isLoading && (
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    AI가 생각하고 있습니다...
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
             </CardContent>
           </Card>
 
-          <div className="flex gap-2">
-            <Input
-              placeholder="답변을 입력하세요..."
-              value={currentMessage}
-              onChange={(e) => setCurrentMessage(e.target.value)}
-              onKeyPress={(e) =>
-                e.key === "Enter" && !isLoading && sendMessage()
-              }
-              className="flex-1"
-              disabled={isLoading}
-            />
-            <Button
-              onClick={sendMessage}
-              disabled={!currentMessage.trim() || isLoading}
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-
-          {quizCount >= 3 && (
-            <div className="text-center pt-4">
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="답변을 입력하세요..."
+                value={currentMessage}
+                onChange={(e) => setCurrentMessage(e.target.value)}
+                onKeyPress={(e) =>
+                  e.key === "Enter" && !isLoading && sendMessage()
+                }
+                className="flex-1"
+                disabled={isLoading}
+              />
               <Button
-                onClick={startRecap}
-                className="bg-green-600 hover:bg-green-700"
+                onClick={sendMessage}
+                disabled={!currentMessage.trim() || isLoading}
               >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                학습 완료 및 정리하기
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </Button>
             </div>
-          )}
+
+            {waitingForNext && quizCount < MAX_QUIZ_COUNT && (
+              <div className="text-center">
+                <Button
+                  onClick={nextQuestion}
+                  disabled={isLoading}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 mr-2" />
+                  )}
+                  다음 질문
+                </Button>
+              </div>
+            )}
+
+            {quizCount >= MAX_QUIZ_COUNT && (
+              <div className="text-center pt-4">
+                <Button
+                  onClick={startRecap}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  TIL 작성하기
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <Card>
