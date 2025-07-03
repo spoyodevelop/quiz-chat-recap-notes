@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import LearningChat from "@/components/LearningChat";
 import TILBoard from "@/components/TILBoard";
+import TILDetail from "@/components/TILDetail";
 import ApiKeySetup from "@/components/ApiKeySetup";
 
 type LearningSession = {
@@ -30,19 +31,49 @@ type LearningSession = {
 const Index = () => {
   const [currentTopic, setCurrentTopic] = useState("");
   const [learningPhase, setLearningPhase] = useState<
-    "setup" | "input" | "chat" | "board"
-  >("setup");
+    "setup" | "input" | "chat" | "board" | "detail"
+  >("board");
   const [currentSession, setCurrentSession] = useState<LearningSession | null>(
     null
   );
   const [completedSessions, setCompletedSessions] = useState<LearningSession[]>(
     []
   );
+  const [selectedSession, setSelectedSession] =
+    useState<LearningSession | null>(null);
+
+  // 완료된 세션들 localStorage에서 불러오기
+  useEffect(() => {
+    const savedSessions = localStorage.getItem("completed-sessions");
+    if (savedSessions) {
+      try {
+        const sessions = JSON.parse(savedSessions);
+        // Date 객체로 변환
+        const sessionsWithDates = sessions.map((session: unknown) => {
+          const sessionData = session as LearningSession;
+          return {
+            ...sessionData,
+            startTime: new Date(sessionData.startTime),
+            messages: sessionData.messages.map((msg) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp),
+            })),
+          };
+        });
+        setCompletedSessions(sessionsWithDates);
+      } catch (error) {
+        console.error("Failed to load sessions from localStorage:", error);
+      }
+    }
+  }, []);
   const [apiKey, setApiKey] = useState<string>("");
+
+  // localStorage에서 완료된 세션만 불러오기 (API 키는 제외)
 
   const handleApiKeySet = (newApiKey: string) => {
     setApiKey(newApiKey);
     if (newApiKey) {
+      // API 키가 설정되면 새 학습 시작을 위해 input 단계로
       setLearningPhase("input");
     } else {
       setLearningPhase("setup");
@@ -66,14 +97,30 @@ const Index = () => {
 
   const completeSession = (session: LearningSession, summary: string) => {
     const completedSession = { ...session, isCompleted: true, summary };
-    setCompletedSessions((prev) => [...prev, completedSession]);
+    const updatedSessions = [...completedSessions, completedSession];
+    setCompletedSessions(updatedSessions);
+
+    // localStorage에 저장
+    localStorage.setItem("completed-sessions", JSON.stringify(updatedSessions));
+
     setCurrentSession(null);
     setCurrentTopic("");
     setLearningPhase("board");
   };
 
   const startNewSession = () => {
-    setLearningPhase("input");
+    // 항상 API 키 입력부터 시작
+    setLearningPhase("setup");
+  };
+
+  const handleSessionSelect = (session: LearningSession) => {
+    setSelectedSession(session);
+    setLearningPhase("detail");
+  };
+
+  const handleBackToBoard = () => {
+    setSelectedSession(null);
+    setLearningPhase("board");
   };
 
   return (
@@ -133,7 +180,7 @@ const Index = () => {
                     className="w-full h-14 text-lg bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 transition-all duration-300"
                   >
                     <MessageCircle className="w-5 h-5 mr-2" />
-                    학습 시작하기
+                    대화 시작하기
                   </Button>
                 </div>
 
@@ -181,7 +228,15 @@ const Index = () => {
         )}
 
         {learningPhase === "board" && (
-          <TILBoard sessions={completedSessions} onStartNew={startNewSession} />
+          <TILBoard
+            sessions={completedSessions}
+            onStartNew={startNewSession}
+            onSessionSelect={handleSessionSelect}
+          />
+        )}
+
+        {learningPhase === "detail" && selectedSession && (
+          <TILDetail session={selectedSession} onBack={handleBackToBoard} />
         )}
       </div>
     </div>

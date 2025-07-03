@@ -77,8 +77,11 @@ const ApiKeySetup: React.FC<ApiKeySetupProps> = ({
       <CardHeader className="text-center">
         <CardTitle className="flex items-center justify-center gap-2">
           <Key className="w-6 h-6 text-blue-600" />
-          Google Gemini API 키 설정
+          대화를 시작하려면 Gemini API 키가 필요해요
         </CardTitle>
+        <p className="text-gray-600 mt-2">
+          AI와 함께 학습하기 위해 Google Gemini API 키를 입력해주세요
+        </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
@@ -166,8 +169,8 @@ const ApiKeySetup: React.FC<ApiKeySetupProps> = ({
             <li>생성된 키를 복사하여 위에 입력</li>
           </ol>
           <p className="text-xs text-gray-500">
-            ⚠️ API 키는 어디에도 저장되지 않으며, 새로고침시 다시 키를
-            입력해야합니다.
+            ⚠️ API 키는 현재 세션에만 사용되며, 새로고침 시 다시 입력하셔야
+            합니다.
           </p>
         </div>
       </CardContent>
