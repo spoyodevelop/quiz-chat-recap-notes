@@ -23,6 +23,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
 
 // 기존 메시지 타입 정의
 export interface ChatMessage {
@@ -71,6 +72,7 @@ const LearningChat: React.FC<LearningChatProps> = ({
   const [waitingForNext, setWaitingForNext] = useState(false);
   const [geminiAPI, setGeminiAPI] = useState<GeminiAPI | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const MAX_QUIZ_COUNT = 3;
 
@@ -94,6 +96,122 @@ const LearningChat: React.FC<LearningChatProps> = ({
     }
   }, [geminiAPI]);
 
+  // 에러 핸들링 함수 추가
+  const handleApiError = (error: unknown) => {
+    console.error("API Error:", error);
+
+    if (error instanceof Error) {
+      const errorMessage = error.message;
+
+      // 네트워크 연결 문제
+      if (
+        errorMessage.includes("Failed to fetch") ||
+        errorMessage.includes("NetworkError") ||
+        errorMessage.includes("TypeError: fetch")
+      ) {
+        toast({
+          variant: "destructive",
+          title: "🌐 연결 오류",
+          description: "인터넷 연결을 확인하고 다시 시도해주세요.",
+        });
+        return;
+      }
+
+      // HTTP 상태 코드별 처리
+      if (errorMessage.includes("400")) {
+        toast({
+          variant: "destructive",
+          title: "⚠️ 요청 오류",
+          description: "입력 내용에 문제가 있습니다. 다시 시도해주세요.",
+        });
+        return;
+      }
+
+      if (errorMessage.includes("401") || errorMessage.includes("403")) {
+        toast({
+          variant: "destructive",
+          title: "🔑 인증 오류",
+          description:
+            "API 키를 확인해주세요. 설정에서 올바른 키를 입력했는지 확인하세요.",
+        });
+        return;
+      }
+
+      if (errorMessage.includes("429")) {
+        toast({
+          variant: "destructive",
+          title: "⏰ 사용량 초과",
+          description:
+            "API 사용량이 초과되었습니다. 잠시 후 다시 시도해주세요.",
+        });
+        return;
+      }
+
+      if (errorMessage.includes("503")) {
+        toast({
+          variant: "destructive",
+          title: "🔧 서버 점검 중",
+          description:
+            "서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
+        });
+        return;
+      }
+
+      if (errorMessage.includes("504")) {
+        toast({
+          variant: "destructive",
+          title: "⏱️ 시간 초과",
+          description:
+            "요청 처리 시간이 초과되었습니다. 더 짧은 내용으로 다시 시도해보세요.",
+        });
+        return;
+      }
+
+      // 5xx 기타 서버 오류
+      if (
+        errorMessage.includes("500") ||
+        errorMessage.includes("502") ||
+        errorMessage.includes("505")
+      ) {
+        toast({
+          variant: "destructive",
+          title: "🔧 서버 오류",
+          description: "서버에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
+        });
+        return;
+      }
+
+      // CORS 오류
+      if (errorMessage.includes("CORS")) {
+        toast({
+          variant: "destructive",
+          title: "🔒 보안 정책 오류",
+          description: "페이지를 새로고침하고 다시 시도해주세요.",
+        });
+        return;
+      }
+
+      // 안전 필터링 관련
+      if (errorMessage.includes("SAFETY") || errorMessage.includes("BLOCKED")) {
+        toast({
+          variant: "destructive",
+          title: "🛡️ 콘텐츠 필터링",
+          description:
+            "입력한 내용이 안전 정책에 위반됩니다. 다른 방식으로 질문해주세요.",
+        });
+        return;
+      }
+    }
+
+    // 기본 오류 메시지
+    toast({
+      variant: "destructive",
+      title: "❌ 오류 발생",
+      description:
+        "예상치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+    });
+  };
+
   const generateWelcomeMessage = async () => {
     if (!geminiAPI) return;
 
@@ -109,7 +227,7 @@ const LearningChat: React.FC<LearningChatProps> = ({
       };
       setMessages([welcomeMessage]);
     } catch (error) {
-      console.error("Welcome message generation failed:", error);
+      handleApiError(error);
       // 폴백 메시지
       const fallbackMessage: StructuredMessage = {
         role: "assistant" as const,
@@ -195,39 +313,13 @@ const LearningChat: React.FC<LearningChatProps> = ({
       setMessages((prev) => [...prev, aiMessage]);
       setQuizCount((prev) => prev + 1);
     } catch (error) {
-      console.error("AI response generation failed:", error);
+      handleApiError(error);
 
-      let errorText = "죄송합니다. 응답을 생성하는 중 오류가 발생했습니다.";
-
-      if (error instanceof Error) {
-        console.error("Error details:", error.message);
-        if (
-          error.message.includes("Failed to fetch") ||
-          error.message.includes("NetworkError")
-        ) {
-          errorText += "\n\n🌐 네트워크 연결을 확인해주세요.";
-        } else if (
-          error.message.includes("401") ||
-          error.message.includes("403")
-        ) {
-          errorText +=
-            "\n\n🔑 API 키를 확인해주세요. API 설정에서 올바른 키를 입력했는지 확인하세요.";
-        } else if (
-          error.message.includes("quota") ||
-          error.message.includes("limit")
-        ) {
-          errorText +=
-            "\n\n⏰ API 사용량이 초과되었습니다. 잠시 후 다시 시도해주세요.";
-        } else if (error.message.includes("CORS")) {
-          errorText +=
-            "\n\n🔒 CORS 정책 문제입니다. 페이지를 새로고침 후 다시 시도해주세요.";
-        }
-        errorText += `\n\n상세 오류: ${error.message}`;
-      }
-
+      // 간단한 폴백 메시지만 추가 (토스트가 주요 알림 역할)
       const errorMessage: StructuredMessage = {
         role: "assistant" as const,
-        content: errorText,
+        content:
+          "죄송합니다. 일시적인 오류가 발생했습니다. 위의 알림을 확인하고 다시 시도해주세요.",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -271,7 +363,7 @@ const LearningChat: React.FC<LearningChatProps> = ({
         setWaitingForNext(true);
       }
     } catch (error) {
-      console.error("Next question generation failed:", error);
+      handleApiError(error);
       setWaitingForNext(true);
     } finally {
       setIsLoading(false);
@@ -295,7 +387,7 @@ const LearningChat: React.FC<LearningChatProps> = ({
       );
       setRecap(summary);
     } catch (error) {
-      console.error("Summary generation failed:", error);
+      handleApiError(error);
       setRecap(`# ${session.topic}
 
 ## 학습 내용 요약
