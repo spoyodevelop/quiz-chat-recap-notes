@@ -467,9 +467,11 @@ const Index = () => {
               TIL Maker
             </h1>
           </div>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            AI와 함께하는 대화형 학습! 주제를 입력하고 퀴즈를 통해 학습한 후,
-            나만의 TIL 노트를 만들어보세요.
+          <p className="text-lg text-gray-600 max-w-xl mx-auto">
+            AI와 함께하는 대화형 학습!
+            <br />
+            주제를 입력하고 퀴즈를 통해 학습한 후, 나만의 TIL 노트를
+            만들어보세요.
           </p>
         </header>
 
