@@ -391,7 +391,7 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
         {/* 1차 정보: 피드백과 핵심 질문 */}
         <div className="space-y-4">
           {data.feedback && (
-            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg mt-4 mb-10">
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg mt-4 mb-6">
               <div className="flex items-start gap-3">
                 <MessageCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                 <div>
@@ -405,6 +405,7 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
               </div>
             </div>
           )}
+          <hr className="my-4" />
 
           <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
             <div className="flex items-start gap-3">
