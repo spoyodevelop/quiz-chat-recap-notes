@@ -498,7 +498,7 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
         </Badge>
       </div>
 
-      {isQuizMode && (
+      {isQuizMode && !isRecapping && (
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="space-y-2">
@@ -626,28 +626,56 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>학습 정리 📝</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              학습 정리 📝
+              {isLoading && (
+                <div className="flex items-center gap-2 text-sm text-blue-600">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  AI가 요약을 작성 중입니다...
+                </div>
+              )}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-gray-600">
-              오늘 "{session.topic}"에 대해 학습한 내용을 간단히 요약해주세요.
-              이 내용은 TIL 보드에 표시됩니다.
-            </p>
-            <Textarea
-              placeholder="예: React Hooks의 useState와 useEffect를 학습했다. useState는 상태 관리, useEffect는 사이드 이펙트 처리에 사용한다..."
-              value={recap}
-              onChange={(e) => setRecap(e.target.value)}
-              rows={6}
-              className="resize-none"
-            />
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setIsRecapping(false)}>
-                돌아가기
-              </Button>
-              <Button onClick={completeSession} disabled={!recap.trim()}>
-                완료하기
-              </Button>
-            </div>
+            {isLoading ? (
+              <div className="text-center py-8 space-y-4">
+                <div className="flex items-center justify-center gap-2 text-blue-600">
+                  <Loader2 className="w-8 h-8 animate-spin" />
+                  <span className="text-lg font-medium">
+                    AI가 학습 내용을 정리하고 있습니다...
+                  </span>
+                </div>
+                <p className="text-gray-500">
+                  대화 내용을 바탕으로 맞춤형 TIL을 작성 중입니다. 잠시만
+                  기다려주세요.
+                </p>
+              </div>
+            ) : (
+              <>
+                <p className="text-gray-600">
+                  AI가 생성한 학습 요약입니다. 내용을 확인하고 필요에 따라
+                  수정해주세요. 이 내용은 TIL 보드에 표시됩니다.
+                </p>
+                <Textarea
+                  placeholder="예: React Hooks의 useState와 useEffect를 학습했다. useState는 상태 관리, useEffect는 사이드 이펙트 처리에 사용한다..."
+                  value={recap}
+                  onChange={(e) => setRecap(e.target.value)}
+                  rows={8}
+                  className="resize-none"
+                />
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsRecapping(false)}
+                  >
+                    돌아가기
+                  </Button>
+                  <Button onClick={completeSession} disabled={!recap.trim()}>
+                    완료하기
+                  </Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       )}

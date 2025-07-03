@@ -167,9 +167,18 @@ const TILDetail: React.FC<TILDetailProps> = ({ session, onBack }) => {
             </div>
             <div>
               <div className="text-2xl font-bold text-orange-600">
-                {Math.floor(
-                  (Date.now() - session.startTime.getTime()) / (1000 * 60)
-                )}
+                {(() => {
+                  if (session.messages.length === 0) return 0;
+                  const firstMessage = session.messages[0];
+                  const lastMessage =
+                    session.messages[session.messages.length - 1];
+                  const learningTime = Math.floor(
+                    (lastMessage.timestamp.getTime() -
+                      firstMessage.timestamp.getTime()) /
+                      (1000 * 60)
+                  );
+                  return Math.max(learningTime, 1); // 최소 1분으로 표시
+                })()}
                 분
               </div>
               <div className="text-sm text-gray-600">학습 시간</div>
