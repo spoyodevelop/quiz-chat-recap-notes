@@ -387,87 +387,111 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
     const data = message.structuredData;
 
     return (
-      <div className="space-y-6">
-        {data.feedback && (
-          <>
-            <Alert className="border-blue-200 bg-blue-50">
-              <MessageCircle className="h-4 w-4" />
-              <AlertDescription className="text-blue-800">
-                <strong>피드백:</strong> {data.feedback}
-              </AlertDescription>
-            </Alert>
-            <Separator className="my-6" />
-          </>
-        )}
-
-        <Card className="border-2 border-green-200 bg-green-50">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-green-800">
-              <Lightbulb className="w-5 h-5" />
-              핵심 질문
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg font-medium text-green-900 leading-relaxed">
-              {data.mainQuestion}
-            </p>
-            <Badge variant="secondary" className="mt-2">
-              {data.questionType}
-            </Badge>
-          </CardContent>
-        </Card>
-
-        {data.highlights && data.highlights.length > 0 && (
-          <Card className="border-yellow-200 bg-yellow-50">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-yellow-800">
-                <Target className="w-5 h-5" />
-                주목해야 할 핵심 포인트
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {data.highlights.map((highlight, index) => (
-                  <li
-                    key={index}
-                    className="flex items-start gap-2 text-yellow-900"
-                  >
-                    <span className="text-yellow-600 mt-1">•</span>
-                    <span>{highlight}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
-
-        {data.options && data.options.length > 0 && (
-          <Card className="border-purple-200 bg-purple-50">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-purple-800">선택지</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {data.options.map((option, index) => (
-                  <div
-                    key={index}
-                    className="p-3 bg-white rounded-lg border border-purple-200"
-                  >
-                    <span className="text-purple-900">{option}</span>
-                  </div>
-                ))}
+      <div className="space-y-4">
+        {/* 1차 정보: 피드백과 핵심 질문 */}
+        <div className="space-y-4">
+          {data.feedback && (
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg mt-4 mb-10">
+              <div className="flex items-start gap-3">
+                <MessageCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="text-base font-medium text-blue-800 block mb-2">
+                    답변 피드백
+                  </span>
+                  <p className="text-sm text-blue-700 leading-relaxed">
+                    {data.feedback}
+                  </p>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          )}
 
-        {data.hint && (
-          <Alert className="border-indigo-200 bg-indigo-50">
-            <Lightbulb className="h-4 w-4" />
-            <AlertDescription className="text-indigo-800">
-              <strong>힌트:</strong> {data.hint}
-            </AlertDescription>
-          </Alert>
+          <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
+            <div className="flex items-start gap-3">
+              <Lightbulb className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-base font-medium text-green-800">
+                    다음 질문
+                  </span>
+                  {data.questionType && (
+                    <Badge
+                      variant="secondary"
+                      className="text-xs bg-green-100 text-green-700"
+                    >
+                      {data.questionType}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-green-900 leading-relaxed font-medium">
+                  {data.mainQuestion}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2차 정보: 부가 자료들 (더 작고 컴팩트하게) */}
+        {(data.highlights || data.options || data.hint) && (
+          <div className="space-y-2 pl-4 border-l-2 border-gray-200">
+            {data.highlights && data.highlights.length > 0 && (
+              <div className="bg-yellow-50/70 border border-yellow-200 p-2 rounded">
+                <div className="flex items-start gap-2">
+                  <Target className="h-3 w-3 text-yellow-600 mt-1 flex-shrink-0" />
+                  <div className="flex-1">
+                    <span className="text-xs font-medium text-yellow-800 block mb-1">
+                      참고할 포인트
+                    </span>
+                    <ul className="space-y-0.5">
+                      {data.highlights.map((highlight, index) => (
+                        <li
+                          key={index}
+                          className="flex items-start gap-1 text-xs text-yellow-900"
+                        >
+                          <span className="text-yellow-600 mt-0.5">•</span>
+                          <span className="leading-relaxed">{highlight}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {data.options && data.options.length > 0 && (
+              <div className="bg-purple-50/70 border border-purple-200 p-2 rounded">
+                <span className="text-xs font-medium text-purple-800 block mb-1">
+                  선택지
+                </span>
+                <div className="space-y-0.5">
+                  {data.options.map((option, index) => (
+                    <div
+                      key={index}
+                      className="text-xs text-purple-900 bg-white/60 rounded px-2 py-0.5"
+                    >
+                      {option}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {data.hint && (
+              <div className="bg-indigo-50/70 border border-indigo-200 p-2 rounded">
+                <div className="flex items-start gap-2">
+                  <Lightbulb className="h-3 w-3 text-indigo-600 mt-1 flex-shrink-0" />
+                  <div>
+                    <span className="text-xs font-medium text-indigo-800 block mb-1">
+                      힌트
+                    </span>
+                    <p className="text-xs text-indigo-700 leading-relaxed">
+                      {data.hint}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
     );
@@ -475,34 +499,38 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <Button
           variant="ghost"
           onClick={onBack}
-          className="flex items-center gap-2"
+          size="sm"
+          className="flex items-center gap-2 h-8"
         >
           <ArrowLeft className="w-4 h-4" />
           돌아가기
         </Button>
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-800">
+          <h2 className="text-lg font-semibold text-gray-800">
             {session.topic}
           </h2>
-          <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-            <Clock className="w-4 h-4" />
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <Clock className="w-3 h-3" />
             {formatTime(session.startTime)} 시작
           </div>
         </div>
-        <Badge variant="secondary" className="bg-green-100 text-green-700">
+        <Badge
+          variant="secondary"
+          className="bg-green-100 text-green-700 text-xs"
+        >
           진행중
         </Badge>
       </div>
 
       {isQuizMode && !isRecapping && (
-        <Card className="mb-6">
-          <CardContent className="pt-6">
+        <Card className="mb-4">
+          <CardContent className="pt-4 pb-3">
             <div className="space-y-2">
-              <div className="flex justify-between text-sm text-gray-600">
+              <div className="flex justify-between text-xs text-gray-600">
                 <span>학습 진행도</span>
                 <span>
                   {quizCount}/{MAX_QUIZ_COUNT}
@@ -510,7 +538,7 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
               </div>
               <Progress
                 value={(quizCount / MAX_QUIZ_COUNT) * 100}
-                className="w-full"
+                className="w-full h-2"
               />
               <p className="text-xs text-gray-500 text-center">
                 {quizCount >= MAX_QUIZ_COUNT
@@ -523,10 +551,10 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
       )}
 
       {!isRecapping ? (
-        <div className="space-y-6">
-          <Card className="h-96 overflow-y-auto">
-            <CardContent className="p-6">
-              <div className="space-y-6">
+        <div className="space-y-4">
+          <Card className="h-[600px] overflow-y-auto">
+            <CardContent className="p-4">
+              <div className="space-y-4">
                 {messages.map((message, index) => (
                   <div key={index} className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -536,8 +564,8 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
                         }
                         className={
                           message.role === "user"
-                            ? "bg-blue-600"
-                            : "bg-green-100 text-green-700"
+                            ? "bg-blue-600 text-xs"
+                            : "bg-green-100 text-green-700 text-xs"
                         }
                       >
                         {message.role === "user" ? "나" : "AI"}
@@ -549,19 +577,19 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
                     {message.role === "assistant" && message.structuredData ? (
                       <StructuredMessageCard message={message} />
                     ) : (
-                      <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+                      <div className="whitespace-pre-wrap text-gray-700 leading-relaxed text-sm">
                         {message.content}
                       </div>
                     )}
                     {index < messages.length - 1 && (
-                      <Separator className="my-4" />
+                      <Separator className="my-3" />
                     )}
                   </div>
                 ))}
                 {isLoading && (
                   <div className="flex items-center gap-2 text-gray-500">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    AI가 생각하고 있습니다...
+                    <span className="text-sm">AI가 생각하고 있습니다...</span>
                   </div>
                 )}
                 <div ref={messagesEndRef} />
@@ -569,7 +597,7 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
             </CardContent>
           </Card>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex gap-2">
               <Input
                 placeholder="답변을 입력하세요..."
@@ -578,12 +606,14 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
                 onKeyPress={(e) =>
                   e.key === "Enter" && !isLoading && sendMessage()
                 }
-                className="flex-1"
+                className="flex-1 h-10"
                 disabled={isLoading}
               />
               <Button
                 onClick={sendMessage}
                 disabled={!currentMessage.trim() || isLoading}
+                size="sm"
+                className="h-10 px-3"
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -598,12 +628,13 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
                 <Button
                   onClick={nextQuestion}
                   disabled={isLoading}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 h-8 text-sm"
                 >
                   {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    <Loader2 className="w-3 h-3 animate-spin mr-1" />
                   ) : (
-                    <ChevronRight className="w-4 h-4 mr-2" />
+                    <ChevronRight className="w-3 h-3 mr-1" />
                   )}
                   다음 질문
                 </Button>
@@ -611,12 +642,13 @@ AI와 함께하는 학습을 통해 "${session.topic}"에 대한 이해를 높�
             )}
 
             {quizCount >= MAX_QUIZ_COUNT && (
-              <div className="text-center pt-4">
+              <div className="text-center pt-2">
                 <Button
                   onClick={startRecap}
-                  className="bg-green-600 hover:bg-green-700"
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 h-8 text-sm"
                 >
-                  <CheckCircle className="w-4 h-4 mr-2" />
+                  <CheckCircle className="w-3 h-3 mr-1" />
                   TIL 작성하기
                 </Button>
               </div>
